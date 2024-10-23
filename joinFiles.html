@@ -348,6 +348,8 @@
 
             async function handleFiles(newFiles) {
                 try {
+                    console.log('Processing files:', newFiles); // Debug-Ausgabe
+                    
                     // Aktualisiere oder füge neue Dateien hinzu
                     for (const file of newFiles) {
                         const path = file.relativePath || file.webkitRelativePath || file.name;
@@ -357,15 +359,16 @@
                     updateFileList();
                     
                     let output = '';
-                    for (const file of currentFiles.values()) {
+                    const filePromises = Array.from(currentFiles.values()).map(async (file) => {
                         const extension = file.name.split('.').pop().toLowerCase();
                         const language = extensionToLanguage[extension] || 'plaintext';
                         const content = await file.text();
                         const relativePath = file.relativePath || file.webkitRelativePath || file.name;
-                        
-                        output += `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
-                    }
+                        return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+                    });
                     
+                    const results = await Promise.all(filePromises);
+                    output = results.join('');
                     textarea.value = output.trim();
                 } catch (error) {
                     console.error('Error handling files:', error);
@@ -398,15 +401,30 @@
                 e.preventDefault();
                 e.stopPropagation();
                 dropZone.classList.remove('drag-over');
-                
+
                 let newFiles = [];
                 try {
-                    if (e.dataTransfer.items) {
-                    newFiles = await getAllFileEntries(e.dataTransfer.items);
-                } else {
-                    newFiles = Array.from(e.dataTransfer.files);
-                }
-                await handleFiles(newFiles);
+                    // Prüfen ob es sich um Ordner oder Dateien handelt
+                    if (e.dataTransfer.items && e.dataTransfer.items[0]) {
+                        // Prüfen ob es ein Ordner ist
+                        const item = e.dataTransfer.items[0];
+                        if (item.webkitGetAsEntry && item.webkitGetAsEntry().isDirectory) {
+                            // Ordner verarbeiten
+                            newFiles = await getAllFileEntries(e.dataTransfer.items);
+                        } else {
+                            // Einzelne Dateien verarbeiten
+                            newFiles = Array.from(e.dataTransfer.files);
+                        }
+                    } else {
+                        // Fallback für Browser ohne items API
+                        newFiles = Array.from(e.dataTransfer.files);
+                    }
+
+                    if (newFiles.length > 0) {
+                        progressContainer.style.display = 'block';
+                        await handleFiles(newFiles);
+                        updateProgress(1, 1); // Fortschritt abschließen
+                    }
                 } catch (error) {
                     console.error('Error processing dropped files:', error);
                     alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
