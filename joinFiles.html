@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Datei Format Konverter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background: #f5f5f5;
+        }
+
+        .drop-zone {
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            background: white;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #2196F3;
+            background: #e3f2fd;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            flex: 1;
+        }
+
+        .copy-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .copy-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .reset-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 5px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .file-list h3 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .file-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .file-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+
+        .file-list .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-list .file-type {
+            background-color: #e3f2fd;
+            color: #1976D2;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+
+        .file-list .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .no-files {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="drop-zone">
+        <p>Dateien hier hineinziehen oder klicken zum Auswählen</p>
+    </div>
+    
+    <div class="file-list">
+        <h3>Verfügbare Dateien</h3>
+        <div class="file-list-content">
+            <p class="no-files">Keine Dateien vorhanden</p>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="copy-btn">Kopieren</button>
+        <button class="reset-btn">Zurücksetzen</button>
+    </div>
+
+    <textarea readonly></textarea>
+    
+    <div class="toast">In Zwischenablage kopiert!</div>
+
+    <script>
+        const dropZone = document.querySelector('.drop-zone');
+        const textarea = document.querySelector('textarea');
+        const copyBtn = document.querySelector('.copy-btn');
+        const resetBtn = document.querySelector('.reset-btn');
+        const toast = document.querySelector('.toast');
+        const fileListContent = document.querySelector('.file-list-content');
+
+        // Mapping von Dateierweiterungen zu Sprachen
+        const extensionToLanguage = {
+            'js': 'javascript',
+            'py': 'python',
+            'java': 'java',
+            'cpp': 'cpp',
+            'c': 'c',
+            'html': 'html',
+            'css': 'css',
+            'php': 'php',
+            'rb': 'ruby',
+            'ts': 'typescript',
+            'json': 'json',
+            'xml': 'xml',
+            'md': 'markdown',
+            'sql': 'sql',
+            'sh': 'shell',
+            'yaml': 'yaml',
+            'txt': 'text'
+        };
+
+        // Funktion zum Formatieren der Dateigröße
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // Funktion zum Aktualisieren der Dateiliste
+        function updateFileList(files) {
+            if (files.length === 0) {
+                fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
+                return;
+            }
+
+            const fileItems = Array.from(files).map(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                const language = extensionToLanguage[extension] || 'plaintext';
+                return `
+                    <li>
+                        <div class="file-info">
+                            <span>${file.name}</span>
+                            <span class="file-type">${language}</span>
+                        </div>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
+                    </li>
+                `;
+            }).join('');
+
+            fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
+        }
+
+        // Drag & Drop Events
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // Klick-Event für Dateiauswahl
+        dropZone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.onchange = e => handleFiles(e.target.files);
+            input.click();
+        });
+
+        async function handleFiles(files) {
+            let output = '';
+            
+            updateFileList(files);
+            
+            for (const file of files) {
+                const extension = file.name.split('.').pop().toLowerCase();
+                const language = extensionToLanguage[extension] || 'plaintext';
+                const content = await file.text();
+                
+                output += `${file.name}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+            }
+            
+            textarea.value = output.trim();
+        }
+
+        // Copy Button
+        copyBtn.addEventListener('click', () => {
+            textarea.select();
+            document.execCommand('copy');
+            
+            // Show toast
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        });
+
+        // Reset Button
+        resetBtn.addEventListener('click', () => {
+            textarea.value = '';
+            updateFileList([]);
+        });
+    </script>
+</body>
+</html>
