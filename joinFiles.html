@@ -11,6 +11,23 @@
             padding: 0 1rem;
             background: #f5f5f5;
         }
+        
+        .progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #f5f5f5;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #2196F3;
+            width: 0;
+            transition: width 0.3s ease;
+        }
 
         .drop-zone {
             border: 3px dashed #ccc;
@@ -21,6 +38,7 @@
             transition: border-color 0.3s ease;
             cursor: pointer;
             margin-bottom: 1rem;
+            position: relative;
         }
 
         .drop-zone.drag-over {
@@ -182,6 +200,9 @@
 <body>
     <div class="drop-zone">
         <p>Dateien oder Ordner hier hineinziehen oder klicken zum Auswählen</p>
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
     </div>
     
     <div class="file-list">
@@ -201,185 +222,238 @@
     <div class="toast">In Zwischenablage kopiert!</div>
 
     <script>
-        const dropZone = document.querySelector('.drop-zone');
-        const textarea = document.querySelector('textarea');
-        const copyBtn = document.querySelector('.copy-btn');
-        const resetBtn = document.querySelector('.reset-btn');
-        const toast = document.querySelector('.toast');
-        const fileListContent = document.querySelector('.file-list-content');
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.querySelector('.drop-zone');
+            const textarea = document.querySelector('textarea');
+            const copyBtn = document.querySelector('.copy-btn');
+            const resetBtn = document.querySelector('.reset-btn');
+            const toast = document.querySelector('.toast');
+            const fileListContent = document.querySelector('.file-list-content');
+            const progressContainer = document.querySelector('.progress-container');
+            const progressBar = document.querySelector('.progress-bar');
 
-        // Speichern der aktuellen Dateien
-        let currentFiles = [];
+            let currentFiles = new Map(); // Verwende Map für einfacheres Update von Dateien
 
-        // Mapping von Dateierweiterungen zu Sprachen
-        const extensionToLanguage = {
-            'js': 'javascript',
-            'py': 'python',
-            'java': 'java',
-            'cpp': 'cpp',
-            'c': 'c',
-            'html': 'html',
-            'css': 'css',
-            'php': 'php',
-            'rb': 'ruby',
-            'ts': 'typescript',
-            'json': 'json',
-            'xml': 'xml',
-            'md': 'markdown',
-            'sql': 'sql',
-            'sh': 'shell',
-            'yaml': 'yaml',
-            'txt': 'text'
-        };
+            const extensionToLanguage = {
+                'js': 'javascript',
+                'py': 'python',
+                'java': 'java',
+                'cpp': 'cpp',
+                'c': 'c',
+                'html': 'html',
+                'css': 'css',
+                'php': 'php',
+                'rb': 'ruby',
+                'ts': 'typescript',
+                'json': 'json',
+                'xml': 'xml',
+                'md': 'markdown',
+                'sql': 'sql',
+                'sh': 'shell',
+                'yaml': 'yaml',
+                'txt': 'text'
+            };
 
-        // Funktion zum Formatieren der Dateigröße
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            else return (bytes / 1048576).toFixed(1) + ' MB';
-        }
-
-        // Funktion zum Aktualisieren der Dateiliste
-        function updateFileList() {
-            if (currentFiles.length === 0) {
-                fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
-                return;
+            function updateProgress(processed, total) {
+                const progress = (processed / total) * 100;
+                progressContainer.style.display = 'block';
+                progressBar.style.width = `${progress}%`;
+                
+                if (processed === total) {
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        progressBar.style.width = '0%';
+                    }, 500);
+                }
             }
 
-            const fileItems = currentFiles.map(file => {
-                const extension = file.name.split('.').pop().toLowerCase();
-                const language = extensionToLanguage[extension] || 'plaintext';
-                const relativePath = file.webkitRelativePath || file.relativePath || file.name;
-                return `
-                    <li>
-                        <div class="file-info">
-                            <span>${file.name}</span>
-                            <span class="file-type">${language}</span>
-                            <span class="file-path">${relativePath}</span>
-                        </div>
-                        <span class="file-size">${formatFileSize(file.size)}</span>
-                    </li>
-                `;
-            }).join('');
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
 
-            fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
-        }
+            function updateFileList() {
+                if (currentFiles.size === 0) {
+                    fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
+                    return;
+                }
 
-        // Funktion zum rekursiven Einlesen von Dateien aus einem DataTransferItemList
-        async function getAllFileEntries(dataTransferItems) {
-            const fileEntries = [];
-            const queue = [];
-            
-            // Erste Ebene der Items zur Queue hinzufügen
-            for (let item of dataTransferItems) {
-                if (item.kind === 'file') {
-                    const entry = item.webkitGetAsEntry();
-                    if (entry) {
-                        queue.push(entry);
+                const fileItems = Array.from(currentFiles.values()).map(file => {
+                    const extension = file.name.split('.').pop().toLowerCase();
+                    const language = extensionToLanguage[extension] || 'plaintext';
+                    const relativePath = file.relativePath || file.webkitRelativePath || file.name;
+                    return `
+                        <li>
+                            <div class="file-info">
+                                <span>${file.name}</span>
+                                <span class="file-type">${language}</span>
+                                <span class="file-path">${relativePath}</span>
+                            </div>
+                            <span class="file-size">${formatFileSize(file.size)}</span>
+                        </li>
+                    `;
+                }).join('');
+
+                fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
+            }
+
+            async function getAllFileEntries(dataTransferItems) {
+                const fileEntries = [];
+                const queue = [];
+                let totalEntries = 0;
+                let processedEntries = 0;
+                
+                for (let item of dataTransferItems) {
+                    if (item.kind === 'file') {
+                        const entry = item.webkitGetAsEntry();
+                        if (entry) {
+                            queue.push(entry);
+                            totalEntries++;
+                        }
                     }
                 }
+
+                while (queue.length > 0) {
+                    const entry = queue.shift();
+                    if (entry.isFile) {
+                        fileEntries.push(entry);
+                        processedEntries++;
+                        updateProgress(processedEntries, totalEntries);
+                    } else if (entry.isDirectory) {
+                        const reader = entry.createReader();
+                        try {
+                            const entries = await new Promise((resolve, reject) => {
+                                reader.readEntries(resolve, reject);
+                            });
+                            queue.push(...entries);
+                            totalEntries += entries.length;
+                        } catch (error) {
+                            console.error('Error reading directory:', error);
+                        }
+                    }
+                }
+
+                const files = await Promise.all(fileEntries.map(entry => {
+                    return new Promise((resolve) => {
+                        entry.file(file => {
+                            file.relativePath = entry.fullPath.slice(1);
+                            resolve(file);
+                        });
+                    });
+                }));
+
+                return files;
             }
 
-            // Rekursiv durch die Queue gehen
-            while (queue.length > 0) {
-                const entry = queue.shift();
-                if (entry.isFile) {
-                    fileEntries.push(entry);
-                } else if (entry.isDirectory) {
-                    const reader = entry.createReader();
-                    const entries = await new Promise((resolve) => {
-                        reader.readEntries(resolve);
-                    });
-                    queue.push(...entries);
+            async function handleFiles(newFiles) {
+                try {
+                    // Aktualisiere oder füge neue Dateien hinzu
+                    for (const file of newFiles) {
+                        const path = file.relativePath || file.webkitRelativePath || file.name;
+                        currentFiles.set(path, file);
+                    }
+                    
+                    updateFileList();
+                    
+                    let output = '';
+                    for (const file of currentFiles.values()) {
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        const language = extensionToLanguage[extension] || 'plaintext';
+                        const content = await file.text();
+                        const relativePath = file.relativePath || file.webkitRelativePath || file.name;
+                        
+                        output += `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+                    }
+                    
+                    textarea.value = output.trim();
+                } catch (error) {
+                    console.error('Error handling files:', error);
+                    alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
                 }
             }
 
-            // Alle FileEntry Objekte in File Objekte umwandeln
-            const files = await Promise.all(fileEntries.map(entry => {
-                return new Promise((resolve) => {
-                    entry.file(file => {
-                        file.relativePath = entry.fullPath.slice(1); // Entferne führenden Slash
-                        resolve(file);
-                    });
-                });
-            }));
+            // Drag & Drop Events
+            dropZone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
 
-            return files;
-        }
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
 
-        // Drag & Drop Events
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!dropZone.contains(e.relatedTarget)) {
+                    dropZone.classList.remove('drag-over');
+                }
+            });
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-
-            let newFiles = [];
-            if (e.dataTransfer.items) {
-                // Verarbeite Ordner und Dateien rekursiv
-                newFiles = await getAllFileEntries(e.dataTransfer.items);
-            } else {
-                // Fallback für einfache Dateien
-                newFiles = Array.from(e.dataTransfer.files);
-            }
-            
-            await handleFiles(newFiles);
-        });
-
-        // Klick-Event für Dateiauswahl
-        dropZone.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.multiple = true;
-            input.webkitdirectory = true;
-            input.directory = true;
-            input.onchange = e => handleFiles(Array.from(e.target.files));
-            input.click();
-        });
-
-        async function handleFiles(newFiles) {
-            // Füge neue Dateien zum bestehenden Array hinzu
-            currentFiles = [...currentFiles, ...newFiles];
-            
-            updateFileList();
-            
-            // Aktualisiere Textarea
-            let output = '';
-            for (const file of currentFiles) {
-                const extension = file.name.split('.').pop().toLowerCase();
-                const language = extensionToLanguage[extension] || 'plaintext';
-                const content = await file.text();
-                const relativePath = file.webkitRelativePath || file.relativePath || file.name;
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
                 
-                output += `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
-            }
-            
-            textarea.value = output.trim();
-        }
+                let newFiles = [];
+                try {
+                    if (e.dataTransfer.items) {
+                    newFiles = await getAllFileEntries(e.dataTransfer.items);
+                } else {
+                    newFiles = Array.from(e.dataTransfer.files);
+                }
+                await handleFiles(newFiles);
+                } catch (error) {
+                    console.error('Error processing dropped files:', error);
+                    alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
+                }
+            });
 
-        // Copy Button
-        copyBtn.addEventListener('click', () => {
-            textarea.select();
-            document.execCommand('copy');
-            
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
-        });
+            // Klick-Event für Ordnerauswahl
+            dropZone.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.webkitdirectory = true;
+                input.directory = true;
+                
+                input.addEventListener('change', async (e) => {
+                    progressContainer.style.display = 'block';
+                    const files = Array.from(e.target.files);
+                    let processed = 0;
+                    
+                    // Zeige Fortschritt für Dateiverarbeitung
+                    const processWithProgress = async () => {
+                    await handleFiles(files);
+                        processed = files.length;
+                        updateProgress(processed, files.length);
+                    };
+                    
+                    await processWithProgress();
+                });
+                
+                input.click();
+            });
 
-        // Reset Button
-        resetBtn.addEventListener('click', () => {
-            currentFiles = [];
-            textarea.value = '';
-            updateFileList();
+            copyBtn.addEventListener('click', () => {
+                textarea.select();
+                document.execCommand('copy');
+                
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 2000);
+            });
+
+            resetBtn.addEventListener('click', () => {
+                currentFiles.clear();
+                textarea.value = '';
+                updateFileList();
+            });
         });
     </script>
 </body>
