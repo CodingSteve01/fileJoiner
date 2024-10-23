@@ -98,12 +98,18 @@
             padding: 1rem;
             margin-bottom: 1rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .file-list h3 {
             margin-top: 0;
             margin-bottom: 0.5rem;
             color: #333;
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 0.5rem 0;
         }
 
         .file-list ul {
@@ -128,6 +134,13 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            overflow: hidden;
+        }
+
+        .file-list .file-info span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .file-list .file-type {
@@ -136,11 +149,14 @@
             padding: 0.2rem 0.5rem;
             border-radius: 3px;
             font-size: 0.8rem;
+            white-space: nowrap;
         }
 
         .file-list .file-size {
             color: #666;
             font-size: 0.9rem;
+            white-space: nowrap;
+            margin-left: 0.5rem;
         }
 
         @keyframes fadeIn {
@@ -152,11 +168,20 @@
             color: #666;
             font-style: italic;
         }
+
+        .file-path {
+            color: #666;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
     <div class="drop-zone">
-        <p>Dateien hier hineinziehen oder klicken zum Auswählen</p>
+        <p>Dateien oder Ordner hier hineinziehen oder klicken zum Auswählen</p>
     </div>
     
     <div class="file-list">
@@ -182,6 +207,9 @@
         const resetBtn = document.querySelector('.reset-btn');
         const toast = document.querySelector('.toast');
         const fileListContent = document.querySelector('.file-list-content');
+
+        // Speichern der aktuellen Dateien
+        let currentFiles = [];
 
         // Mapping von Dateierweiterungen zu Sprachen
         const extensionToLanguage = {
@@ -212,20 +240,22 @@
         }
 
         // Funktion zum Aktualisieren der Dateiliste
-        function updateFileList(files) {
-            if (files.length === 0) {
+        function updateFileList() {
+            if (currentFiles.length === 0) {
                 fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
                 return;
             }
 
-            const fileItems = Array.from(files).map(file => {
+            const fileItems = currentFiles.map(file => {
                 const extension = file.name.split('.').pop().toLowerCase();
                 const language = extensionToLanguage[extension] || 'plaintext';
+                const relativePath = file.webkitRelativePath || file.relativePath || file.name;
                 return `
                     <li>
                         <div class="file-info">
                             <span>${file.name}</span>
                             <span class="file-type">${language}</span>
+                            <span class="file-path">${relativePath}</span>
                         </div>
                         <span class="file-size">${formatFileSize(file.size)}</span>
                     </li>
@@ -233,6 +263,48 @@
             }).join('');
 
             fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
+        }
+
+        // Funktion zum rekursiven Einlesen von Dateien aus einem DataTransferItemList
+        async function getAllFileEntries(dataTransferItems) {
+            const fileEntries = [];
+            const queue = [];
+            
+            // Erste Ebene der Items zur Queue hinzufügen
+            for (let item of dataTransferItems) {
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        queue.push(entry);
+                    }
+                }
+            }
+
+            // Rekursiv durch die Queue gehen
+            while (queue.length > 0) {
+                const entry = queue.shift();
+                if (entry.isFile) {
+                    fileEntries.push(entry);
+                } else if (entry.isDirectory) {
+                    const reader = entry.createReader();
+                    const entries = await new Promise((resolve) => {
+                        reader.readEntries(resolve);
+                    });
+                    queue.push(...entries);
+                }
+            }
+
+            // Alle FileEntry Objekte in File Objekte umwandeln
+            const files = await Promise.all(fileEntries.map(entry => {
+                return new Promise((resolve) => {
+                    entry.file(file => {
+                        file.relativePath = entry.fullPath.slice(1); // Entferne führenden Slash
+                        resolve(file);
+                    });
+                });
+            }));
+
+            return files;
         }
 
         // Drag & Drop Events
@@ -248,7 +320,17 @@
         dropZone.addEventListener('drop', async (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
-            handleFiles(e.dataTransfer.files);
+
+            let newFiles = [];
+            if (e.dataTransfer.items) {
+                // Verarbeite Ordner und Dateien rekursiv
+                newFiles = await getAllFileEntries(e.dataTransfer.items);
+            } else {
+                // Fallback für einfache Dateien
+                newFiles = Array.from(e.dataTransfer.files);
+            }
+            
+            await handleFiles(newFiles);
         });
 
         // Klick-Event für Dateiauswahl
@@ -256,21 +338,27 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.multiple = true;
-            input.onchange = e => handleFiles(e.target.files);
+            input.webkitdirectory = true;
+            input.directory = true;
+            input.onchange = e => handleFiles(Array.from(e.target.files));
             input.click();
         });
 
-        async function handleFiles(files) {
+        async function handleFiles(newFiles) {
+            // Füge neue Dateien zum bestehenden Array hinzu
+            currentFiles = [...currentFiles, ...newFiles];
+            
+            updateFileList();
+            
+            // Aktualisiere Textarea
             let output = '';
-            
-            updateFileList(files);
-            
-            for (const file of files) {
+            for (const file of currentFiles) {
                 const extension = file.name.split('.').pop().toLowerCase();
                 const language = extensionToLanguage[extension] || 'plaintext';
                 const content = await file.text();
+                const relativePath = file.webkitRelativePath || file.relativePath || file.name;
                 
-                output += `${file.name}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+                output += `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
             }
             
             textarea.value = output.trim();
@@ -281,7 +369,6 @@
             textarea.select();
             document.execCommand('copy');
             
-            // Show toast
             toast.style.display = 'block';
             setTimeout(() => {
                 toast.style.display = 'none';
@@ -290,8 +377,9 @@
 
         // Reset Button
         resetBtn.addEventListener('click', () => {
+            currentFiles = [];
             textarea.value = '';
-            updateFileList([]);
+            updateFileList();
         });
     </script>
 </body>
