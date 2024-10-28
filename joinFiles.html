@@ -177,16 +177,6 @@
             margin-left: 0.5rem;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translate(-50%, 20px); }
-            to { opacity: 1; transform: translate(-50%, 0); }
-        }
-
-        .no-files {
-            color: #666;
-            font-style: italic;
-        }
-
         .file-path {
             color: #666;
             font-size: 0.8rem;
@@ -194,6 +184,37 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .remove-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .no-files {
+            color: #666;
+            font-style: italic;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
         }
     </style>
 </head>
@@ -232,7 +253,7 @@
             const progressContainer = document.querySelector('.progress-container');
             const progressBar = document.querySelector('.progress-bar');
 
-            let currentFiles = new Map(); // Verwende Map für einfacheres Update von Dateien
+            let currentFiles = new Map();
 
             const extensionToLanguage = {
                 'js': 'javascript',
@@ -254,6 +275,14 @@
                 'txt': 'text'
             };
 
+            function shouldIgnoreFile(path) {
+                return path.includes('/.git/') || 
+                       path === '.gitignore' ||
+                       path === '.gitattributes' ||
+                       path === '.gitmodules' ||
+                       path.endsWith('.git');
+            }
+
             function updateProgress(processed, total) {
                 const progress = (processed / total) * 100;
                 progressContainer.style.display = 'block';
@@ -273,6 +302,31 @@
                 else return (bytes / 1048576).toFixed(1) + ' MB';
             }
 
+            function removeFile(path) {
+                currentFiles.delete(path);
+                updateFileList();
+                updateTextarea();
+            }
+
+            async function updateTextarea() {
+                try {
+                    let output = '';
+                    const filePromises = Array.from(currentFiles.values()).map(async (file) => {
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        const language = extensionToLanguage[extension] || 'plaintext';
+                        const content = await file.text();
+                        const relativePath = file.relativePath || file.webkitRelativePath || file.name;
+                        return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+                    });
+                    
+                    const results = await Promise.all(filePromises);
+                    output = results.join('');
+                    textarea.value = output.trim();
+                } catch (error) {
+                    console.error('Error updating textarea:', error);
+                }
+            }
+
             function updateFileList() {
                 if (currentFiles.size === 0) {
                     fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
@@ -290,7 +344,10 @@
                                 <span class="file-type">${language}</span>
                                 <span class="file-path">${relativePath}</span>
                             </div>
-                            <span class="file-size">${formatFileSize(file.size)}</span>
+                            <div class="file-actions">
+                                <span class="file-size">${formatFileSize(file.size)}</span>
+                                <button class="remove-btn" onclick="removeFile('${relativePath}')">Entfernen</button>
+                            </div>
                         </li>
                     `;
                 }).join('');
@@ -348,35 +405,23 @@
 
             async function handleFiles(newFiles) {
                 try {
-                    console.log('Processing files:', newFiles); // Debug-Ausgabe
+                    console.log('Processing files:', newFiles);
                     
-                    // Aktualisiere oder füge neue Dateien hinzu
                     for (const file of newFiles) {
                         const path = file.relativePath || file.webkitRelativePath || file.name;
-                        currentFiles.set(path, file);
+                        if (!shouldIgnoreFile(path)) {
+                            currentFiles.set(path, file);
+                        }
                     }
                     
                     updateFileList();
-                    
-                    let output = '';
-                    const filePromises = Array.from(currentFiles.values()).map(async (file) => {
-                        const extension = file.name.split('.').pop().toLowerCase();
-                        const language = extensionToLanguage[extension] || 'plaintext';
-                        const content = await file.text();
-                        const relativePath = file.relativePath || file.webkitRelativePath || file.name;
-                        return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
-                    });
-                    
-                    const results = await Promise.all(filePromises);
-                    output = results.join('');
-                    textarea.value = output.trim();
+                    await updateTextarea();
                 } catch (error) {
                     console.error('Error handling files:', error);
                     alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
                 }
             }
 
-            // Drag & Drop Events
             dropZone.addEventListener('dragenter', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -404,26 +449,21 @@
 
                 let newFiles = [];
                 try {
-                    // Prüfen ob es sich um Ordner oder Dateien handelt
                     if (e.dataTransfer.items && e.dataTransfer.items[0]) {
-                        // Prüfen ob es ein Ordner ist
                         const item = e.dataTransfer.items[0];
                         if (item.webkitGetAsEntry && item.webkitGetAsEntry().isDirectory) {
-                            // Ordner verarbeiten
                             newFiles = await getAllFileEntries(e.dataTransfer.items);
                         } else {
-                            // Einzelne Dateien verarbeiten
                             newFiles = Array.from(e.dataTransfer.files);
                         }
                     } else {
-                        // Fallback für Browser ohne items API
                         newFiles = Array.from(e.dataTransfer.files);
                     }
 
                     if (newFiles.length > 0) {
                         progressContainer.style.display = 'block';
                         await handleFiles(newFiles);
-                        updateProgress(1, 1); // Fortschritt abschließen
+                        updateProgress(1, 1);
                     }
                 } catch (error) {
                     console.error('Error processing dropped files:', error);
@@ -431,7 +471,6 @@
                 }
             });
 
-            // Klick-Event für Ordnerauswahl
             dropZone.addEventListener('click', () => {
                 const input = document.createElement('input');
                 input.type = 'file';
@@ -444,9 +483,8 @@
                     const files = Array.from(e.target.files);
                     let processed = 0;
                     
-                    // Zeige Fortschritt für Dateiverarbeitung
                     const processWithProgress = async () => {
-                    await handleFiles(files);
+                        await handleFiles(files);
                         processed = files.length;
                         updateProgress(processed, files.length);
                     };
@@ -472,6 +510,9 @@
                 textarea.value = '';
                 updateFileList();
             });
+
+            // Make removeFile available globally
+            window.removeFile = removeFile;
         });
     </script>
 </body>
