@@ -272,7 +272,47 @@
                 'sql': 'sql',
                 'sh': 'shell',
                 'yaml': 'yaml',
-                'txt': 'text'
+                'txt': 'text',
+                'cs': 'csharp',
+                'go': 'go',
+                'swift': 'swift',
+                'kt': 'kotlin',
+                'r': 'r',
+                'pl': 'perl',
+                'lua': 'lua',
+                'scala': 'scala',
+                'groovy': 'groovy',
+                'dart': 'dart',
+                'coffee': 'coffeescript',
+                'jsx': 'jsx',
+                'tsx': 'tsx',
+                'vue': 'vue',
+                'svelte': 'svelte',
+                'php': 'php',
+                'asp': 'aspnet',
+                'aspx': 'aspx',
+                'jsp': 'jsp',
+                'ejs': 'ejs',
+                'handlebars': 'handlebars',
+                'twig': 'twig',
+                'pug': 'pug',
+                'hbs': 'handlebars',
+                'scss': 'scss',
+                'sass': 'sass',
+                'less': 'less',
+                'styl': 'stylus',
+                'svg': 'svg',
+                'png': 'png',
+                'jpg': 'jpg',
+                'jpeg': 'jpeg',
+                'gif': 'gif',
+                'bmp': 'bmp',
+                'webp': 'webp',
+                'ico': 'ico',
+                'mp4': 'mp4',
+                'webm': 'webm',
+                'ogg': 'ogg',
+                'mp3': 'mp3'
             };
 
             function shouldIgnoreFile(path) {
@@ -451,7 +491,7 @@
                 try {
                     if (e.dataTransfer.items && e.dataTransfer.items[0]) {
                         const item = e.dataTransfer.items[0];
-                        if (item.webkitGetAsEntry && item.webkitGetAsEntry().isDirectory) {
+                        if (item.webkitGetAsEntry && item.webkitGetAsEntry()?.isDirectory) {
                             newFiles = await getAllFileEntries(e.dataTransfer.items);
                         } else {
                             newFiles = Array.from(e.dataTransfer.files);
