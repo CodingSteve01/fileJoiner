@@ -4,12 +4,374 @@
     <meta charset="UTF-8">
     <title>Datei Format Konverter</title>
     <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --success: #22c55e;
+            --success-dark: #16a34a;
+            --neutral-50: #f9fafb;
+            --neutral-100: #f3f4f6;
+            --neutral-200: #e5e7eb;
+            --neutral-300: #d1d5db;
+            --neutral-400: #9ca3af;
+            --neutral-500: #6b7280;
+            --neutral-600: #4b5563;
+            --neutral-700: #374151;
+            --neutral-800: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius-sm: 0.375rem;
+            --radius: 0.5rem;
+            --radius-lg: 0.75rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            background: #f5f5f5;
+            line-height: 1.5;
+            color: var(--neutral-800);
+            background: var(--neutral-50);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .full-page-drop-zone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(59, 130, 246, 0.1);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drop-zone-content {
+            padding: 3rem;
+            background: white;
+            border: 3px dashed var(--primary);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .drop-zone-content svg {
+            color: var(--primary);
+        }
+
+        .drop-zone-content h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--neutral-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--neutral-600);
+            font-size: 1.125rem;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--neutral-200);
+            background: var(--neutral-50);
+        }
+
+        .card-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--neutral-700);
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .filter-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--neutral-300);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-tag {
+            background: var(--neutral-100);
+            color: var(--neutral-700);
+            border: 1px solid var(--neutral-200);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .filter-tag:hover {
+            background: var(--neutral-200);
+        }
+
+        .filter-tag.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .upload-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .file-list {
+            position: relative;
+            border: 2px dashed var(--neutral-300);
+            border-radius: var(--radius);
+            transition: all 0.15s ease;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .file-list.drag-over {
+            border-color: var(--primary);
+            background: var(--neutral-100);
+        }
+
+        .file-list-content {
+            padding: 1rem;
+        }
+
+        .file-list ul {
+            list-style: none;
+        }
+
+        .file-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--neutral-200);
+            transition: background 0.15s ease;
+        }
+
+        .file-list li:hover {
+            background: var(--neutral-50);
+        }
+
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: var(--neutral-700);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-type {
+            background: var(--neutral-100);
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-lg);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .file-path {
+            color: var(--neutral-500);
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-size {
+            color: var(--neutral-500);
+            font-size: 0.875rem;
+        }
+
+        .remove-btn {
+            background: var(--neutral-100);
+            color: var(--danger);
+            border: none;
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .remove-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .remove-filtered-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .remove-filtered-btn:hover {
+            background: var(--danger-dark);
+        }
+
+        .output-container textarea {
+            width: 100%;
+            min-height: 400px;
+            padding: 1rem;
+            border: 1px solid var(--neutral-300);
+            border-radius: var(--radius);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            line-height: 1.7;
+            resize: vertical;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-dark);
         }
 
         .progress-container {
@@ -18,239 +380,153 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: #f5f5f5;
-            display: none;
+            background: var(--neutral-100);
         }
 
         .progress-bar {
             height: 100%;
-            background: #2196F3;
-            width: 0;
+            background: var(--primary);
             transition: width 0.3s ease;
-        }
-
-        .drop-zone {
-            border: 3px dashed #ccc;
-            border-radius: 10px;
-            padding: 2rem;
-            text-align: center;
-            background: white;
-            transition: border-color 0.3s ease;
-            cursor: pointer;
-            margin-bottom: 1rem;
-            position: relative;
-        }
-
-        .drop-zone.drag-over {
-            border-color: #2196F3;
-            background: #e3f2fd;
-        }
-
-        .drop-zone p {
-            margin: 0;
-            color: #666;
-            font-size: 1.1rem;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 300px;
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-family: monospace;
-            margin-bottom: 1rem;
-            box-sizing: border-box;
-        }
-
-        .button-container {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s ease;
-            flex: 1;
-        }
-
-        .copy-btn {
-            background-color: #2196F3;
-            color: white;
-        }
-
-        .copy-btn:hover {
-            background-color: #1976D2;
-        }
-
-        .reset-btn {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .reset-btn:hover {
-            background-color: #d32f2f;
         }
 
         .toast {
             position: fixed;
-            bottom: 20px;
+            bottom: 2rem;
             left: 50%;
             transform: translateX(-50%);
-            background-color: #333;
+            background: var(--neutral-800);
             color: white;
             padding: 1rem 2rem;
-            border-radius: 5px;
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .file-list {
-            background: white;
-            border-radius: 5px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .file-list h3 {
-            margin-top: 0;
-            margin-bottom: 0.5rem;
-            color: #333;
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 0.5rem 0;
-        }
-
-        .file-list ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .file-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .file-list li:last-child {
-            border-bottom: none;
-        }
-
-        .file-list .file-info {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            overflow: hidden;
-        }
-
-        .file-list .file-info span:first-child {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-list .file-type {
-            background-color: #e3f2fd;
-            color: #1976D2;
-            padding: 0.2rem 0.5rem;
-            border-radius: 3px;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .file-list .file-size {
-            color: #666;
-            font-size: 0.9rem;
-            white-space: nowrap;
-            margin-left: 0.5rem;
-        }
-
-        .file-path {
-            color: #666;
-            font-size: 0.8rem;
-            margin-left: 1rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-actions {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .remove-btn {
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 0.2rem 0.5rem;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: background-color 0.3s ease;
-        }
-
-        .remove-btn:hover {
-            background-color: #cc0000;
+            border-radius: var(--radius);
+            font-weight: 500;
+            box-shadow: var(--shadow-md);
+            z-index: 50;
         }
 
         .no-files {
-            color: #666;
-            font-style: italic;
+            text-align: center;
+            color: var(--neutral-500);
+            padding: 2rem;
+            font-size: 0.875rem;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, 20px);
+        @media (max-width: 1264px) {
+            .app-grid {
+                grid-template-columns: 1fr;
             }
-            to {
-                opacity: 1;
-                transform: translate(-50%, 0);
+
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.875rem;
+            }
+
+            .header p {
+                font-size: 1rem;
             }
         }
     </style>
 </head>
 <body>
-<div class="drop-zone">
-    <p>Dateien oder Ordner hier hineinziehen oder klicken zum Auswählen</p>
-    <div class="progress-container">
-        <div class="progress-bar"></div>
+<div class="full-page-drop-zone" style="display: none;">
+    <div class="drop-zone-content">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <h2>Drop files or folders here</h2>
+    </div>
+</div>
+<div class="container">
+    <header class="header">
+        <h1>File Format Converter</h1>
+        <p>Convert and process your files with ease</p>
+    </header>
+
+    <div class="app-grid">
+        <div class="card">
+            <div class="card-header">
+                <h2>File Selection</h2>
+            </div>
+            <div class="card-body">
+                <div class="filter-container">
+                    <div class="input-group">
+                        <input type="text" id="fileFilter" placeholder="Filter files (e.g., *.js, src/*, test.*)">
+                    </div>
+                    <div class="filter-tags">
+                        <button class="filter-tag" data-pattern="*.js">JavaScript</button>
+                        <button class="filter-tag" data-pattern="*.css">CSS</button>
+                        <button class="filter-tag" data-pattern="*.html">HTML</button>
+                        <button class="filter-tag" data-pattern="*.py">Python</button>
+                        <button class="filter-tag" data-pattern="!binary">Binary Files</button>
+                    </div>
+                    <button class="remove-filtered-btn">Remove Filtered Files</button>
+                </div>
+
+                <button class="upload-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" width="24" height="24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Select Folders
+                </button>
+
+                <div class="file-list">
+                    <div class="file-list-content">
+                        <p class="no-files">No files available</p>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Output</h2>
+            </div>
+            <div class="card-body">
+                <div class="output-container">
+                    <textarea readonly></textarea>
+                    <div class="button-container">
+                        <button class="btn btn-primary copy-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            Copy
+                        </button>
+                        <button class="btn btn-danger reset-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <path d="M3 3h6l2 4h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/>
+                                <line x1="12" y1="10" x2="12" y2="18"/>
+                                <line x1="8" y1="14" x2="16" y2="14"/>
+                            </svg>
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="file-list">
-    <h3>Verfügbare Dateien</h3>
-    <div class="file-list-content">
-        <p class="no-files">Keine Dateien vorhanden</p>
-    </div>
-</div>
-
-<div class="button-container">
-    <button class="copy-btn">Kopieren</button>
-    <button class="reset-btn">Zurücksetzen</button>
-</div>
-
-<textarea readonly></textarea>
-
-<div class="toast">In Zwischenablage kopiert!</div>
+<div class="toast">Copied to clipboard!</div>
 
 <script>
 	document.addEventListener('DOMContentLoaded', () => {
-		const dropZone = document.querySelector('.drop-zone');
+		// DOM elements
+		const fullPageDropZone = document.querySelector('.full-page-drop-zone');
+		const fileList = document.querySelector('.file-list');
 		const textarea = document.querySelector('textarea');
 		const copyBtn = document.querySelector('.copy-btn');
 		const resetBtn = document.querySelector('.reset-btn');
@@ -258,9 +534,28 @@
 		const fileListContent = document.querySelector('.file-list-content');
 		const progressContainer = document.querySelector('.progress-container');
 		const progressBar = document.querySelector('.progress-bar');
+		const fileFilter = document.getElementById('fileFilter');
+		const filterTags = document.querySelectorAll('.filter-tag');
+		const uploadBtn = document.querySelector('.upload-btn');
+		const removeFilteredBtn = document.querySelector('.remove-filtered-btn');
 
+		// Hide the toast
+		toast.style.display = 'none';
+
+		// State
 		let currentFiles = new Map();
+		let activeFilters = new Set();
 
+		// Binary file extensions
+		const binaryExtensions = new Set([
+			'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'svg',
+			'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'aac',
+			'zip', 'rar', '7z', 'tar', 'gz', 'pdf', 'doc', 'docx',
+			'xls', 'xlsx', 'ppt', 'pptx', 'exe', 'dll', 'so', 'dylib',
+			'bin', 'dat', 'iso', 'img'
+		]);
+
+		// Language mapping for syntax highlighting
 		const extensionToLanguage = {
 			'js': 'javascript',
 			'py': 'python',
@@ -321,29 +616,79 @@
 			'mp3': 'mp3'
 		};
 
+		/**
+		 * Checks if a file should be ignored based on its path
+		 * @param {string} path - The file path to check
+		 * @returns {boolean} True if the file should be ignored
+		 */
 		function shouldIgnoreFile(path) {
-			return path.includes('/.git/') ||
-				path.includes('/obj/') ||
-				path.includes('/bin/') ||
-				path.includes('/node_modules/') ||
-				path.includes('/.vscode/') ||
-				path.includes('/.idea/') ||
-				path.includes('/.vs/') ||
-				path.includes('/.nuxt/') ||
-				path.includes('/dist/') ||
-				path.includes('/build/') ||
-				path.includes('/out/') ||
-				path.includes('/coverage/') ||
-				path.includes('/.next/') ||
-				path.includes('/.cache/') ||
-				path.includes('/.github/') ||
-				path.includes('/.gitlab/') ||
-				path === '.gitignore' ||
-				path === '.gitattributes' ||
-				path === '.gitmodules' ||
+			const ignorePaths = [
+				'/.git/',
+				'/obj/',
+				'/bin/',
+				'/node_modules/',
+				'/.vscode/',
+				'/.idea/',
+				'/.vs/',
+				'/.nuxt/',
+				'/dist/',
+				'/build/',
+				'/out/',
+				'/coverage/',
+				'/.next/',
+				'/.cache/',
+				'/.github/',
+				'/.gitlab/'
+			];
+
+			const ignoreFiles = [
+				'.gitignore',
+				'.gitattributes',
+				'.gitmodules'
+			];
+
+			return ignorePaths.some(p => path.includes(p)) ||
+				ignoreFiles.includes(path) ||
 				path.endsWith('.git');
 		}
 
+		/**
+		 * Checks if a file is binary based on its extension
+		 * @param {string} filename - The filename to check
+		 * @returns {boolean} True if the file is binary
+		 */
+		function isBinaryFile(filename) {
+			const extension = filename.split('.').pop().toLowerCase();
+			return binaryExtensions.has(extension);
+		}
+
+		/**
+		 * Checks if a path matches a filter pattern
+		 * @param {string} path - The file path
+		 * @param {string} pattern - The filter pattern
+		 * @returns {boolean} True if the path matches the pattern
+		 */
+		function matchesFilter(path, pattern) {
+			if (pattern === '!binary') {
+				return isBinaryFile(path);
+			}
+
+			const normalizedPath = path.replace(/\\/g, '/');
+			const regexPattern = pattern
+				.replace(/\./g, '\\.')
+				.replace(/\*/g, '.*')
+				.replace(/\?/g, '.');
+
+			return new RegExp(`^${regexPattern}$`).test(normalizedPath) ||
+				new RegExp(`${regexPattern}$`).test(normalizedPath) ||
+				new RegExp(`/${regexPattern}/`).test(normalizedPath);
+		}
+
+		/**
+		 * Updates the progress bar
+		 * @param {number} processed - Number of processed items
+		 * @param {number} total - Total number of items
+		 */
 		function updateProgress(processed, total) {
 			const progress = (processed / total) * 100;
 			progressContainer.style.display = 'block';
@@ -357,12 +702,21 @@
 			}
 		}
 
+		/**
+		 * Formats file size in bytes to human readable format
+		 * @param {number} bytes - The file size in bytes
+		 * @returns {string} Formatted file size
+		 */
 		function formatFileSize(bytes) {
 			if (bytes < 1024) return bytes + ' B';
 			else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
 			else return (bytes / 1048576).toFixed(1) + ' MB';
 		}
 
+		/**
+		 * Removes a file from the current files
+		 * @param {string} path - The file path to remove
+		 */
 		async function removeFile(path) {
 			if (currentFiles.has(path)) {
 				currentFiles.delete(path);
@@ -370,21 +724,65 @@
 			}
 		}
 
+		/**
+		 * Removes all currently filtered files
+		 */
+		async function removeFilteredFiles() {
+			const filteredFiles = filterFiles();
+			const filteredPaths = new Set(filteredFiles.map(file =>
+				file.relativePath || file.webkitRelativePath || file.name
+			));
+
+			for (const [path, _] of currentFiles.entries()) {
+				if (filteredPaths.has(path)) {
+					currentFiles.delete(path);
+				}
+			}
+
+			await updateFileListAndContent();
+		}
+
+		/**
+		 * Updates both file list and textarea content
+		 */
 		async function updateFileListAndContent() {
 			updateFileList();
 			await updateTextarea();
 		}
 
+		/**
+		 * Filters files based on active filters and filter input
+		 * @returns {File[]} Filtered files array
+		 */
+		function filterFiles() {
+			const filterText = fileFilter.value.trim();
+			const patterns = [...activeFilters];
+			if (filterText) {
+				patterns.push(filterText);
+			}
+
+			return Array.from(currentFiles.entries()).filter(([path, file]) => {
+				if (patterns.length === 0) return true;
+				return patterns.some(pattern => matchesFilter(path, pattern));
+			}).map(([path, file]) => file);
+		}
+
+		/**
+		 * Updates the textarea content with filtered files
+		 */
 		async function updateTextarea() {
 			try {
 				let output = '';
-				const filePromises = Array.from(currentFiles.values()).map(async (file) => {
-					const extension = file.name.split('.').pop().toLowerCase();
-					const language = extensionToLanguage[extension] || 'plaintext';
-					const content = await file.text();
-					const relativePath = file.relativePath || file.webkitRelativePath || file.name;
-					return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
-				});
+				const filteredFiles = filterFiles();
+				const filePromises = filteredFiles
+					.filter(file => !isBinaryFile(file.name))
+					.map(async (file) => {
+						const extension = file.name.split('.').pop().toLowerCase();
+						const language = extensionToLanguage[extension] || 'plaintext';
+						const content = await file.text();
+						const relativePath = file.relativePath || file.webkitRelativePath || file.name;
+						return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
+					});
 
 				const results = await Promise.all(filePromises);
 				output = results.join('');
@@ -394,28 +792,34 @@
 			}
 		}
 
+		/**
+		 * Updates the file list display
+		 */
 		function updateFileList() {
-			if (currentFiles.size === 0) {
-				fileListContent.innerHTML = '<p class="no-files">Keine Dateien vorhanden</p>';
+			const filteredFiles = filterFiles();
+
+			if (filteredFiles.length === 0) {
+				fileListContent.innerHTML = '<p class="no-files">No files available</p>';
 				return;
 			}
 
-			const fileItems = Array.from(currentFiles.values()).map(file => {
+			const fileItems = filteredFiles.map(file => {
 				const extension = file.name.split('.').pop().toLowerCase();
 				const language = extensionToLanguage[extension] || 'plaintext';
 				const relativePath = file.relativePath || file.webkitRelativePath || file.name;
 				const escapedPath = relativePath.replace(/'/g, "\\'");
+				const isBinary = isBinaryFile(file.name);
 
 				return `
                         <li>
                             <div class="file-info">
                                 <span>${file.name}</span>
-                                <span class="file-type">${language}</span>
+                                <span class="file-type">${isBinary ? 'binary' : language}</span>
                                 <span class="file-path">${relativePath}</span>
                             </div>
                             <div class="file-actions">
                                 <span class="file-size">${formatFileSize(file.size)}</span>
-                                <button class="remove-btn" onclick="window.removeFile('${escapedPath}')">Entfernen</button>
+                                <button class="remove-btn" onclick="window.removeFile('${escapedPath}')">Remove</button>
                             </div>
                         </li>
                     `;
@@ -424,6 +828,11 @@
 			fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
 		}
 
+		/**
+		 * Processes directory entries recursively for drag and drop
+		 * @param {DataTransferItemList} dataTransferItems - The drag and drop items
+		 * @returns {Promise<File[]>} Array of files
+		 */
 		async function getAllFileEntries(dataTransferItems) {
 			const fileEntries = [];
 			const queue = [];
@@ -472,10 +881,12 @@
 			return files;
 		}
 
+		/**
+		 * Handles the processing of new files
+		 * @param {File[]} newFiles - Array of files to process
+		 */
 		async function handleFiles(newFiles) {
 			try {
-				console.log('Processing files:', newFiles);
-
 				for (const file of newFiles) {
 					const path = file.relativePath || file.webkitRelativePath || file.name;
 					if (!shouldIgnoreFile(path)) {
@@ -486,41 +897,55 @@
 				await updateFileListAndContent();
 			} catch (error) {
 				console.error('Error handling files:', error);
-				alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
+				alert('Error processing files. Please try again.');
 			}
 		}
 
-		dropZone.addEventListener('dragenter', (e) => {
+		// Event Listeners for drag and drop on file list
+		document.addEventListener('dragenter', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			dropZone.classList.add('drag-over');
+			fullPageDropZone.style.display = 'flex';
 		});
 
-		dropZone.addEventListener('dragover', (e) => {
+		fullPageDropZone.addEventListener('dragleave', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			dropZone.classList.add('drag-over');
-		});
+			const rect = fullPageDropZone.getBoundingClientRect();
+			const isLeaving =
+				e.clientY <= rect.top ||
+				e.clientY >= rect.bottom ||
+				e.clientX <= rect.left ||
+				e.clientX >= rect.right;
 
-		dropZone.addEventListener('dragleave', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			if (!dropZone.contains(e.relatedTarget)) {
-				dropZone.classList.remove('drag-over');
+			if (isLeaving) {
+				fullPageDropZone.style.display = 'none';
 			}
 		});
 
-		dropZone.addEventListener('drop', async (e) => {
+		fullPageDropZone.addEventListener('dragover', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			dropZone.classList.remove('drag-over');
+		});
+
+		fullPageDropZone.addEventListener('drop', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			fullPageDropZone.style.display = 'none';
 
 			let newFiles = [];
 			try {
 				if (e.dataTransfer.items && e.dataTransfer.items[0]) {
 					const item = e.dataTransfer.items[0];
-					if (item.webkitGetAsEntry && item.webkitGetAsEntry()?.isDirectory) {
-						newFiles = await getAllFileEntries(e.dataTransfer.items);
+					console.log(item);
+					// Check if it's a directory and we have the required API
+					if (item.webkitGetAsEntry) {
+						const entry = item.webkitGetAsEntry();
+						if (entry?.isDirectory) {
+							newFiles = await getAllFileEntries(e.dataTransfer.items);
+						} else {
+							newFiles = Array.from(e.dataTransfer.files);
+						}
 					} else {
 						newFiles = Array.from(e.dataTransfer.files);
 					}
@@ -535,11 +960,12 @@
 				}
 			} catch (error) {
 				console.error('Error processing dropped files:', error);
-				alert('Fehler beim Verarbeiten der Dateien. Bitte versuchen Sie es erneut.');
+				alert('Error processing files. Please try again.');
 			}
 		});
 
-		dropZone.addEventListener('click', () => {
+		// Event listener for folder selection button
+		uploadBtn.addEventListener('click', () => {
 			const input = document.createElement('input');
 			input.type = 'file';
 			input.multiple = true;
@@ -549,20 +975,35 @@
 			input.addEventListener('change', async (e) => {
 				progressContainer.style.display = 'block';
 				const files = Array.from(e.target.files);
-				let processed = 0;
-
-				const processWithProgress = async () => {
-					await handleFiles(files);
-					processed = files.length;
-					updateProgress(processed, files.length);
-				};
-
-				await processWithProgress();
+				await handleFiles(files);
+				updateProgress(files.length, files.length);
 			});
 
 			input.click();
 		});
 
+		// Filter event listeners
+		fileFilter.addEventListener('input', () => {
+			updateFileList();
+			updateTextarea();
+		});
+
+		filterTags.forEach(tag => {
+			tag.addEventListener('click', () => {
+				const pattern = tag.dataset.pattern;
+				if (activeFilters.has(pattern)) {
+					activeFilters.delete(pattern);
+					tag.classList.remove('active');
+				} else {
+					activeFilters.add(pattern);
+					tag.classList.add('active');
+				}
+				updateFileList();
+				updateTextarea();
+			});
+		});
+
+		// Button event listeners
 		copyBtn.addEventListener('click', () => {
 			textarea.select();
 			document.execCommand('copy');
@@ -576,7 +1017,12 @@
 		resetBtn.addEventListener('click', async () => {
 			currentFiles.clear();
 			await updateFileListAndContent();
+			activeFilters.clear();
+			fileFilter.value = '';
+			filterTags.forEach(tag => tag.classList.remove('active'));
 		});
+
+		removeFilteredBtn.addEventListener('click', removeFilteredFiles);
 
 		// Make removeFile available globally
 		window.removeFile = removeFile;
