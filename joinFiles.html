@@ -323,6 +323,21 @@
 
 		function shouldIgnoreFile(path) {
 			return path.includes('/.git/') ||
+				path.includes('/obj/') ||
+				path.includes('/bin/') ||
+				path.includes('/node_modules/') ||
+				path.includes('/.vscode/') ||
+				path.includes('/.idea/') ||
+				path.includes('/.vs/') ||
+				path.includes('/.nuxt/') ||
+				path.includes('/dist/') ||
+				path.includes('/build/') ||
+				path.includes('/out/') ||
+				path.includes('/coverage/') ||
+				path.includes('/.next/') ||
+				path.includes('/.cache/') ||
+				path.includes('/.github/') ||
+				path.includes('/.gitlab/') ||
 				path === '.gitignore' ||
 				path === '.gitattributes' ||
 				path === '.gitmodules' ||
