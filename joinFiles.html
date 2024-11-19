@@ -188,7 +188,8 @@
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: var(--radius);
+            border-top-left-radius: var(--radius);
+            border-top-right-radius: var(--radius);
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
@@ -210,8 +211,9 @@
 
         .file-list {
             position: relative;
-            border: 2px dashed var(--neutral-300);
-            border-radius: var(--radius);
+            border: 1px solid var(--neutral-300);
+            border-bottom-left-radius: var(--radius);
+            border-bottom-right-radius: var(--radius);
             transition: all 0.15s ease;
             max-height: 400px;
             overflow-y: auto;
@@ -232,8 +234,7 @@
 
         .file-list li {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
             padding: 0.75rem;
             border-bottom: 1px solid var(--neutral-200);
             transition: background 0.15s ease;
@@ -247,10 +248,18 @@
             border-bottom: none;
         }
 
+        .file-main-info {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
         .file-info {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 1rem;
+            gap: 0.5rem;
             min-width: 0;
         }
 
@@ -273,16 +282,20 @@
 
         .file-path {
             color: var(--neutral-500);
-            font-size: 0.875rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.75rem;
+            width: 100%;
+            padding-left: 0.5rem;
+            border-left: 2px solid var(--neutral-200);
+            max-width: 250px;
+            white-space: break-spaces;
+            word-break: break-word;
         }
 
         .file-actions {
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex-shrink: 0;
         }
 
         .file-size {
@@ -410,11 +423,13 @@
             font-size: 0.875rem;
         }
 
-        @media (max-width: 1264px) {
+        @media (max-width: 1024px) {
             .app-grid {
                 grid-template-columns: 1fr;
             }
-
+        }
+        
+        @media (max-width: 640px) {
             body {
                 padding: 1rem;
             }
@@ -812,15 +827,17 @@
 
 				return `
                         <li>
-                            <div class="file-info">
-                                <span>${file.name}</span>
-                                <span class="file-type">${isBinary ? 'binary' : language}</span>
-                                <span class="file-path">${relativePath}</span>
+                            <div class="file-main-info">
+                                <div class="file-info">
+                                    <span class="file-name">${file.name}</span>
+                                    <span class="file-type">${isBinary ? 'binary' : language}</span>
+                                </div>
+                                <div class="file-actions">
+                                    <span class="file-size">${formatFileSize(file.size)}</span>
+                                    <button class="remove-btn" onclick="window.removeFile('${escapedPath}')">Remove</button>
+                                </div>
                             </div>
-                            <div class="file-actions">
-                                <span class="file-size">${formatFileSize(file.size)}</span>
-                                <button class="remove-btn" onclick="window.removeFile('${escapedPath}')">Remove</button>
-                            </div>
+                            <div class="file-path">${relativePath}</div>
                         </li>
                     `;
 			}).join('');
