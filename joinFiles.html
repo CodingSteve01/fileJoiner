@@ -1160,6 +1160,16 @@
 			return files;
 		}
 
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+        const debouncedUpdateFileListAndContent = debounce(updateFileListAndContent, 1000);
+
 		// Event Listener for Folder Selection
 		uploadBtn.addEventListener('click', () => {
 			if (isProcessing) return;
@@ -1181,11 +1191,11 @@
 
 		// Filter Event Listener
 		fileFilter.addEventListener('input', async () => {
-			await updateRemoveFilteredButtonState();
-			if (!isProcessing) {
-				await updateFileListAndContent();
-			}
-		});
+            await updateRemoveFilteredButtonState();
+            if (!isProcessing) {
+                debouncedUpdateFileListAndContent();
+            }
+        });
 
 		filterTags.forEach(tag => {
 			tag.addEventListener('click', async () => {
