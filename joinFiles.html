@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Datei Format Konverter</title>
+    <title>File Format Converter</title>
     <style>
         :root {
             --primary: #3b82f6;
             --primary-dark: #2563eb;
+            --primary-light: #93c5fd;
             --danger: #ef4444;
             --danger-dark: #dc2626;
             --success: #22c55e;
@@ -52,7 +53,7 @@
             background: rgba(59, 130, 246, 0.1);
             backdrop-filter: blur(4px);
             z-index: 1000;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
         }
@@ -112,12 +113,19 @@
             border-radius: var(--radius);
             box-shadow: var(--shadow-md);
             overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .card-header {
             padding: 1.25rem;
             border-bottom: 1px solid var(--neutral-200);
             background: var(--neutral-50);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .card-header h2 {
@@ -128,6 +136,10 @@
 
         .card-body {
             padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
         .filter-container {
@@ -182,14 +194,34 @@
             border-color: var(--primary);
         }
 
+        .remove-filtered-btn {
+            margin-top: 0.5rem;
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .remove-filtered-btn:hover:not(:disabled) {
+            background: var(--danger-dark);
+        }
+
+        .remove-filtered-btn:disabled {
+            display: none;
+        }
+
         .upload-btn {
             width: 100%;
             padding: 1rem;
             background: var(--primary);
             color: white;
             border: none;
-            border-top-left-radius: var(--radius);
-            border-top-right-radius: var(--radius);
+            border-radius: var(--radius);
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
@@ -198,6 +230,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            margin-bottom: 1rem;
         }
 
         .upload-btn:hover {
@@ -212,11 +245,11 @@
         .file-list {
             position: relative;
             border: 1px solid var(--neutral-300);
-            border-bottom-left-radius: var(--radius);
-            border-bottom-right-radius: var(--radius);
+            border-radius: var(--radius);
             transition: all 0.15s ease;
             max-height: 400px;
             overflow-y: auto;
+            padding-bottom: 4px; /* To prevent content from hiding behind progress bar */
         }
 
         .file-list.drag-over {
@@ -320,20 +353,11 @@
             color: white;
         }
 
-        .remove-filtered-btn {
-            background: var(--danger);
-            color: white;
-            border: none;
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .remove-filtered-btn:hover {
-            background: var(--danger-dark);
+        .output-container {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .output-container textarea {
@@ -346,6 +370,37 @@
             font-size: 0.875rem;
             line-height: 1.7;
             resize: vertical;
+            padding-bottom: 4px; /* To prevent content from hiding behind progress bar */
+            flex: 1;
+        }
+
+        .progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--neutral-100);
+            overflow: hidden;
+            display: none;
+        }
+
+        .file-progress-container, .textarea-progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--neutral-100);
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+            width: 0;
         }
 
         .button-container {
@@ -369,12 +424,17 @@
             gap: 0.5rem;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .btn-primary {
             background: var(--primary);
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: var(--primary-dark);
         }
 
@@ -383,23 +443,8 @@
             color: white;
         }
 
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: var(--danger-dark);
-        }
-
-        .progress-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: var(--neutral-100);
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: var(--primary);
-            transition: width 0.3s ease;
         }
 
         .toast {
@@ -414,6 +459,7 @@
             font-weight: 500;
             box-shadow: var(--shadow-md);
             z-index: 50;
+            display: none;
         }
 
         .no-files {
@@ -428,7 +474,7 @@
                 grid-template-columns: 1fr;
             }
         }
-        
+
         @media (max-width: 640px) {
             body {
                 padding: 1rem;
@@ -442,10 +488,20 @@
                 font-size: 1rem;
             }
         }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
-<div class="full-page-drop-zone" style="display: none;">
+
+<div class="full-page-drop-zone">
     <div class="drop-zone-content">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round">
@@ -456,10 +512,11 @@
         <h2>Drop files or folders here</h2>
     </div>
 </div>
+
 <div class="container">
     <header class="header">
         <h1>File Format Converter</h1>
-        <p>Convert and process your files with ease</p>
+        <p>Convert and process your files easily</p>
     </header>
 
     <div class="app-grid">
@@ -468,20 +525,6 @@
                 <h2>File Selection</h2>
             </div>
             <div class="card-body">
-                <div class="filter-container">
-                    <div class="input-group">
-                        <input type="text" id="fileFilter" placeholder="Filter files (e.g., *.js, src/*, test.*)">
-                    </div>
-                    <div class="filter-tags">
-                        <button class="filter-tag" data-pattern="*.js">JavaScript</button>
-                        <button class="filter-tag" data-pattern="*.css">CSS</button>
-                        <button class="filter-tag" data-pattern="*.html">HTML</button>
-                        <button class="filter-tag" data-pattern="*.py">Python</button>
-                        <button class="filter-tag" data-pattern="!binary">Binary Files</button>
-                    </div>
-                    <button class="remove-filtered-btn">Remove Filtered Files</button>
-                </div>
-
                 <button class="upload-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                          stroke-linejoin="round" width="24" height="24">
@@ -489,14 +532,28 @@
                         <polyline points="17 8 12 3 7 8"/>
                         <line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
-                    Select Folders
+                    Select Folder
                 </button>
+
+                <div class="filter-container">
+                    <div class="input-group">
+                        <input type="text" id="fileFilter" placeholder="Filter files (e.g., *.js, src/*, test.*)">
+                    </div>
+                    <div class="filter-tags">
+                        <button class="filter-tag" data-pattern="*.js,*.py,*.java,*.cpp,*.c,*.ts,*.cs,*.cshtml,*.html,*.css,*.php,*.rb,*.json,*.xml,*.md,*.sql,*.sh,*.yaml">Code-Files</button>
+                        <button class="filter-tag" data-pattern="*.json,*.yaml,*.yml,*.xml,*.ini,*.toml,*.env,*.config,*.properties,*.plist,*.cfg,*.conf,*.settings">Config-Files</button>
+                        <button class="filter-tag" data-pattern="*.xml,*.xaml,*.csproj">XML Formats</button>
+                        <button class="filter-tag" data-pattern="*.svg,*.svgz">SVG</button>
+                        <button class="filter-tag" data-pattern="*.md,*.rst,*.adoc,*.txt">Documentations</button>
+                    </div>
+                    <button class="remove-filtered-btn" disabled>Remove Filtered</button>
+                </div>
 
                 <div class="file-list">
                     <div class="file-list-content">
                         <p class="no-files">No files available</p>
                     </div>
-                    <div class="progress-container">
+                    <div class="progress-container file-progress-container">
                         <div class="progress-bar"></div>
                     </div>
                 </div>
@@ -509,9 +566,12 @@
             </div>
             <div class="card-body">
                 <div class="output-container">
-                    <textarea readonly></textarea>
+                    <textarea readonly placeholder="The content of the selected files will appear here..."></textarea>
+                    <div class="progress-container textarea-progress-container">
+                        <div class="progress-bar"></div>
+                    </div>
                     <div class="button-container">
-                        <button class="btn btn-primary copy-btn">
+                        <button class="btn btn-primary copy-btn" disabled>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -519,7 +579,7 @@
                             </svg>
                             Copy
                         </button>
-                        <button class="btn btn-danger reset-btn">
+                        <button class="btn btn-danger reset-btn" disabled>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                                 <path d="M3 3h6l2 4h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/>
@@ -535,11 +595,11 @@
     </div>
 </div>
 
-<div class="toast">Copied to clipboard!</div>
+<div class="toast"></div>
 
 <script>
 	document.addEventListener('DOMContentLoaded', () => {
-		// DOM elements
+		// DOM Elements
 		const fullPageDropZone = document.querySelector('.full-page-drop-zone');
 		const fileList = document.querySelector('.file-list');
 		const textarea = document.querySelector('textarea');
@@ -547,27 +607,49 @@
 		const resetBtn = document.querySelector('.reset-btn');
 		const toast = document.querySelector('.toast');
 		const fileListContent = document.querySelector('.file-list-content');
-		const progressContainer = document.querySelector('.progress-container');
-		const progressBar = document.querySelector('.progress-bar');
+		const fileProgressContainer = document.querySelector('.file-progress-container');
+		const fileProgressBar = fileProgressContainer.querySelector('.progress-bar');
+		const textareaProgressContainer = document.querySelector('.textarea-progress-container');
+		const textareaProgressBar = textareaProgressContainer.querySelector('.progress-bar');
 		const fileFilter = document.getElementById('fileFilter');
 		const filterTags = document.querySelectorAll('.filter-tag');
 		const uploadBtn = document.querySelector('.upload-btn');
 		const removeFilteredBtn = document.querySelector('.remove-filtered-btn');
 
-		// Hide the toast
-		toast.style.display = 'none';
-
-		// State
+		// Status
 		let currentFiles = new Map();
 		let activeFilters = new Set();
+		let isProcessing = false;
+		let abortController = null; // For cancelling ongoing updates
+		let currentProcessing = null; // 'files' or 'textarea'
 
-		// Binary file extensions
+		// Binary file extensions (excluded by default)
 		const binaryExtensions = new Set([
-			'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'svg',
+			'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico',
 			'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'aac',
 			'zip', 'rar', '7z', 'tar', 'gz', 'pdf', 'doc', 'docx',
 			'xls', 'xlsx', 'ppt', 'pptx', 'exe', 'dll', 'so', 'dylib',
 			'bin', 'dat', 'iso', 'img'
+		]);
+
+		// Directories to exclude
+		const excludeDirectories = new Set([
+			'/.git/',
+			'/obj/',
+			'/bin/',
+			'/node_modules/',
+			'/.vscode/',
+			'/.idea/',
+			'/.vs/',
+			'/.nuxt/',
+			'/dist/',
+			'/build/',
+			'/out/',
+			'/coverage/',
+			'/.next/',
+			'/.cache/',
+			'/.github/',
+			'/.gitlab/'
 		]);
 
 		// Language mapping for syntax highlighting
@@ -584,10 +666,13 @@
 			'ts': 'typescript',
 			'json': 'json',
 			'xml': 'xml',
+			'xaml': 'xaml',
+			'csproj': 'xml',
 			'md': 'markdown',
 			'sql': 'sql',
 			'sh': 'shell',
 			'yaml': 'yaml',
+			'yml': 'yaml',
 			'txt': 'text',
 			'cs': 'csharp',
 			'go': 'go',
@@ -628,189 +713,133 @@
 			'mp4': 'mp4',
 			'webm': 'webm',
 			'ogg': 'ogg',
-			'mp3': 'mp3'
+			'mp3': 'mp3',
+			'ini': 'ini',
+			'toml': 'toml',
+			'env': 'env',
+			'config': 'config',
+			'properties': 'properties',
+			'plist': 'plist',
+			'cfg': 'cfg',
+			'conf': 'conf',
+			'settings': 'settings'
 		};
 
-		/**
-		 * Checks if a file should be ignored based on its path
-		 * @param {string} path - The file path to check
-		 * @returns {boolean} True if the file should be ignored
-		 */
-		function shouldIgnoreFile(path) {
-			const ignorePaths = [
-				'/.git/',
-				'/obj/',
-				'/bin/',
-				'/node_modules/',
-				'/.vscode/',
-				'/.idea/',
-				'/.vs/',
-				'/.nuxt/',
-				'/dist/',
-				'/build/',
-				'/out/',
-				'/coverage/',
-				'/.next/',
-				'/.cache/',
-				'/.github/',
-				'/.gitlab/'
-			];
-
-			const ignoreFiles = [
-				'.gitignore',
-				'.gitattributes',
-				'.gitmodules'
-			];
-
-			return ignorePaths.some(p => path.includes(p)) ||
-				ignoreFiles.includes(path) ||
-				path.endsWith('.git');
+		// Helper functions
+		function setProcessing(processing) {
+			isProcessing = processing;
+			uploadBtn.disabled = processing;
+			fileFilter.disabled = processing;
+			filterTags.forEach(tag => tag.disabled = processing);
+			removeFilteredBtn.disabled = processing || !hasActiveFilters();
+			// Show or hide progress bars
+			if (processing) {
+				if (currentProcessing === 'files') {
+					fileProgressContainer.style.display = 'block';
+				} else if (currentProcessing === 'textarea') {
+					textareaProgressContainer.style.display = 'block';
+				}
+			} else {
+				fileProgressContainer.style.display = 'none';
+				textareaProgressContainer.style.display = 'none';
+			}
 		}
 
-		/**
-		 * Checks if a file is binary based on its extension
-		 * @param {string} filename - The filename to check
-		 * @returns {boolean} True if the file is binary
-		 */
+		function showToast(message, duration = 2000) {
+			if (toast.hideTimeout) {
+				clearTimeout(toast.hideTimeout);
+			}
+			toast.textContent = message;
+			toast.style.display = 'block';
+			toast.hideTimeout = setTimeout(() => {
+				toast.style.display = 'none';
+			}, duration);
+		}
+
+		function shouldIgnoreFile(path) {
+			return Array.from(excludeDirectories).some(dir => path.includes(dir)) || isBinaryFile(path);
+		}
+
 		function isBinaryFile(filename) {
 			const extension = filename.split('.').pop().toLowerCase();
 			return binaryExtensions.has(extension);
 		}
 
-		/**
-		 * Checks if a path matches a filter pattern
-		 * @param {string} path - The file path
-		 * @param {string} pattern - The filter pattern
-		 * @returns {boolean} True if the path matches the pattern
-		 */
-		function matchesFilter(path, pattern) {
-			if (pattern === '!binary') {
-				return isBinaryFile(path);
-			}
-
-			const normalizedPath = path.replace(/\\/g, '/');
-			const regexPattern = pattern
-				.replace(/\./g, '\\.')
-				.replace(/\*/g, '.*')
-				.replace(/\?/g, '.');
-
-			return new RegExp(`^${regexPattern}$`).test(normalizedPath) ||
-				new RegExp(`${regexPattern}$`).test(normalizedPath) ||
-				new RegExp(`/${regexPattern}/`).test(normalizedPath);
-		}
-
-		/**
-		 * Updates the progress bar
-		 * @param {number} processed - Number of processed items
-		 * @param {number} total - Total number of items
-		 */
-		function updateProgress(processed, total) {
-			const progress = (processed / total) * 100;
-			progressContainer.style.display = 'block';
-			progressBar.style.width = `${progress}%`;
-
-			if (processed === total) {
-				setTimeout(() => {
-					progressContainer.style.display = 'none';
-					progressBar.style.width = '0%';
-				}, 500);
-			}
-		}
-
-		/**
-		 * Formats file size in bytes to human readable format
-		 * @param {number} bytes - The file size in bytes
-		 * @returns {string} Formatted file size
-		 */
 		function formatFileSize(bytes) {
 			if (bytes < 1024) return bytes + ' B';
 			else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
 			else return (bytes / 1048576).toFixed(1) + ' MB';
 		}
 
-		/**
-		 * Removes a file from the current files
-		 * @param {string} path - The file path to remove
-		 */
-		async function removeFile(path) {
-			if (currentFiles.has(path)) {
-				currentFiles.delete(path);
-				await updateFileListAndContent();
-			}
+		function hasActiveFilters() {
+			const filterText = fileFilter.value.trim();
+			return activeFilters.size > 0 || filterText.length > 0;
 		}
 
-		/**
-		 * Removes all currently filtered files
-		 */
-		async function removeFilteredFiles() {
-			const filteredFiles = filterFiles();
-			const filteredPaths = new Set(filteredFiles.map(file =>
-				file.relativePath || file.webkitRelativePath || file.name
-			));
+		function updateRemoveFilteredButtonState() {
+			removeFilteredBtn.disabled = isProcessing || !hasActiveFilters();
+		}
 
-			for (const [path, _] of currentFiles.entries()) {
-				if (filteredPaths.has(path)) {
-					currentFiles.delete(path);
+		async function copyToClipboard() {
+			if (!textarea.value.trim()) {
+				showToast('No content to copy!');
+				return;
+			}
+
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(textarea.value);
+					showToast('Copied to clipboard!');
+				} else {
+					const textareaTemp = document.createElement('textarea');
+					textareaTemp.value = textarea.value;
+					document.body.appendChild(textareaTemp);
+					textareaTemp.select();
+					const successful = document.execCommand('copy');
+					document.body.removeChild(textareaTemp);
+					if (successful) {
+						showToast('Copied to clipboard!');
+					} else {
+						throw new Error('Copy command failed');
+					}
 				}
+			} catch (err) {
+				console.error('Error copying:', err);
+				showToast('Copy failed. Please try again.');
 			}
-
-			await updateFileListAndContent();
 		}
 
-		/**
-		 * Updates both file list and textarea content
-		 */
-		async function updateFileListAndContent() {
-			updateFileList();
-			await updateTextarea();
+		function matchesFilter(path, pattern) {
+			if (pattern === '!binary') return isBinaryFile(path);
+
+			const patterns = pattern.split(',').map(p => p.trim());
+			return patterns.some(p => {
+				const normalizedPath = path.replace(/\\/g, '/');
+				const regexPattern = p
+					.replace(/\./g, '\\.')
+					.replace(/\*/g, '.*')
+					.replace(/\?/g, '.');
+
+				return new RegExp(`^${regexPattern}$`).test(normalizedPath) ||
+					new RegExp(`${regexPattern}$`).test(normalizedPath) ||
+					new RegExp(`/${regexPattern}/`).test(normalizedPath);
+			});
 		}
 
-		/**
-		 * Filters files based on active filters and filter input
-		 * @returns {File[]} Filtered files array
-		 */
 		function filterFiles() {
 			const filterText = fileFilter.value.trim();
 			const patterns = [...activeFilters];
-			if (filterText) {
-				patterns.push(filterText);
-			}
+			if (filterText) patterns.push(filterText);
 
-			return Array.from(currentFiles.entries()).filter(([path, file]) => {
-				if (patterns.length === 0) return true;
-				return patterns.some(pattern => matchesFilter(path, pattern));
-			}).map(([path, file]) => file);
+			return Array.from(currentFiles.entries())
+				.filter(([path, file]) => {
+					if (patterns.length === 0) return true;
+					return patterns.some(pattern => matchesFilter(path, pattern));
+				})
+				.map(([path, file]) => file);
 		}
 
-		/**
-		 * Updates the textarea content with filtered files
-		 */
-		async function updateTextarea() {
-			try {
-				let output = '';
-				const filteredFiles = filterFiles();
-				const filePromises = filteredFiles
-					.filter(file => !isBinaryFile(file.name))
-					.map(async (file) => {
-						const extension = file.name.split('.').pop().toLowerCase();
-						const language = extensionToLanguage[extension] || 'plaintext';
-						const content = await file.text();
-						const relativePath = file.relativePath || file.webkitRelativePath || file.name;
-						return `${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
-					});
-
-				const results = await Promise.all(filePromises);
-				output = results.join('');
-				textarea.value = output.trim();
-			} catch (error) {
-				console.error('Error updating textarea:', error);
-			}
-		}
-
-		/**
-		 * Updates the file list display
-		 */
-		function updateFileList() {
+		async function updateFileList() {
 			const filteredFiles = filterFiles();
 
 			if (filteredFiles.length === 0) {
@@ -822,107 +851,189 @@
 				const extension = file.name.split('.').pop().toLowerCase();
 				const language = extensionToLanguage[extension] || 'plaintext';
 				const relativePath = file.relativePath || file.webkitRelativePath || file.name;
-				const escapedPath = relativePath.replace(/'/g, "\\'");
 				const isBinary = isBinaryFile(file.name);
 
 				return `
-                        <li>
-                            <div class="file-main-info">
-                                <div class="file-info">
-                                    <span class="file-name">${file.name}</span>
-                                    <span class="file-type">${isBinary ? 'binary' : language}</span>
-                                </div>
-                                <div class="file-actions">
-                                    <span class="file-size">${formatFileSize(file.size)}</span>
-                                    <button class="remove-btn" onclick="window.removeFile('${escapedPath}')">Remove</button>
-                                </div>
+                    <li>
+                        <div class="file-main-info">
+                            <div class="file-info">
+                                <span class="file-name">${file.name}</span>
+                                <span class="file-type">${isBinary ? 'Binary' : language}</span>
                             </div>
-                            <div class="file-path">${relativePath}</div>
-                        </li>
-                    `;
+                            <div class="file-actions">
+                                <span class="file-size">${formatFileSize(file.size)}</span>
+                                <button class="remove-btn" onclick="window.removeFile('${relativePath}')">Remove</button>
+                            </div>
+                        </div>
+                        <div class="file-path">${relativePath}</div>
+                    </li>
+                `;
 			}).join('');
 
 			fileListContent.innerHTML = `<ul>${fileItems}</ul>`;
 		}
 
-		/**
-		 * Processes directory entries recursively for drag and drop
-		 * @param {DataTransferItemList} dataTransferItems - The drag and drop items
-		 * @returns {Promise<File[]>} Array of files
-		 */
-		async function getAllFileEntries(dataTransferItems) {
-			const fileEntries = [];
-			const queue = [];
-			let totalEntries = 0;
-			let processedEntries = 0;
+		async function updateTextarea() {
+			const filteredFiles = filterFiles();
 
-			for (let item of dataTransferItems) {
-				if (item.kind === 'file') {
-					const entry = item.webkitGetAsEntry();
-					if (entry) {
-						queue.push(entry);
-						totalEntries++;
-					}
-				}
+			if (filteredFiles.length === 0) {
+				textarea.value = '';
+				copyBtn.disabled = true;
+				resetBtn.disabled = true;
+				return;
 			}
 
-			while (queue.length > 0) {
-				const entry = queue.shift();
-				if (entry.isFile) {
-					fileEntries.push(entry);
-					processedEntries++;
-					updateProgress(processedEntries, totalEntries);
-				} else if (entry.isDirectory) {
-					const reader = entry.createReader();
+			try {
+				// Abort any ongoing processing
+				if (abortController) {
+					abortController.abort();
+				}
+
+				abortController = new AbortController();
+				const { signal } = abortController;
+
+				textarea.value = 'Loading files...';
+				copyBtn.disabled = true;
+				resetBtn.disabled = true;
+				textareaProgressContainer.style.display = 'block';
+				currentProcessing = 'textarea';
+
+				const nonBinaryFiles = filteredFiles.filter(file => !isBinaryFile(file.name));
+				const total = nonBinaryFiles.length;
+				let processed = 0;
+
+				const fileContents = [];
+
+				for (let i = 0; i < nonBinaryFiles.length; i++) {
+					if (signal.aborted) {
+						console.log('Update canceled');
+						return;
+					}
+
+					const file = nonBinaryFiles[i];
+
 					try {
-						const entries = await new Promise((resolve, reject) => {
-							reader.readEntries(resolve, reject);
-						});
-						queue.push(...entries);
-						totalEntries += entries.length;
+						const content = await file.text();
+						const extension = file.name.split('.').pop().toLowerCase();
+						const language = extensionToLanguage[extension] || 'plaintext';
+						const relativePath = file.relativePath || file.webkitRelativePath || file.name;
+
+						fileContents.push(`${relativePath}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`);
 					} catch (error) {
-						console.error('Error reading directory:', error);
+						console.error(`Error reading ${file.name}:`, error);
+						fileContents.push(`${file.name} (Error reading file)\n\n`);
+					}
+
+					processed++;
+					textareaProgressBar.style.width = `${(processed / total) * 100}%`;
+
+					// Yield to the event loop to keep UI responsive
+					if (i % 100 === 0) {
+						await new Promise(resolve => setTimeout(resolve, 0));
 					}
 				}
+
+				if (!signal.aborted) {
+					textarea.value = fileContents.join('').trim() || 'No text content available';
+					copyBtn.disabled = false;
+					resetBtn.disabled = false;
+				}
+			} catch (error) {
+				if (error.name === 'AbortError') {
+					console.log('Processing aborted');
+				} else {
+					console.error('Error updating textarea:', error);
+					textarea.value = 'Error loading content. Please try again.';
+				}
+			} finally {
+				textareaProgressContainer.style.display = 'none';
+				currentProcessing = null;
 			}
-
-			const files = await Promise.all(fileEntries.map(entry => {
-				return new Promise((resolve) => {
-					entry.file(file => {
-						file.relativePath = entry.fullPath.slice(1);
-						resolve(file);
-					});
-				});
-			}));
-
-			return files;
 		}
 
-		/**
-		 * Handles the processing of new files
-		 * @param {File[]} newFiles - Array of files to process
-		 */
-		async function handleFiles(newFiles) {
+		async function updateFileListAndContent() {
+			setProcessing(true);
+			fileProgressContainer.style.display = 'block';
+			fileProgressBar.style.width = '0%';
+			currentProcessing = 'files';
+
 			try {
-				for (const file of newFiles) {
-					const path = file.relativePath || file.webkitRelativePath || file.name;
-					if (!shouldIgnoreFile(path)) {
-						currentFiles.set(path, file);
+				await updateFileList();
+				await updateTextarea();
+			} finally {
+				setProcessing(false);
+				fileProgressContainer.style.display = 'none';
+				fileProgressBar.style.width = '0%';
+				currentProcessing = null;
+			}
+		}
+
+		async function removeFile(path) {
+			if (currentFiles.has(path)) {
+				currentFiles.delete(path);
+				await updateFileListAndContent();
+			}
+		}
+
+		async function handleFiles(newFiles) {
+			setProcessing(true);
+			fileProgressContainer.style.display = 'block';
+			fileProgressBar.style.width = '0%';
+			currentProcessing = 'files';
+
+			try {
+				const CHUNK_SIZE = 100; // Adjust chunk size as needed
+				for (let i = 0; i < newFiles.length; i += CHUNK_SIZE) {
+					const chunk = newFiles.slice(i, i + CHUNK_SIZE);
+
+					for (const file of chunk) {
+						const path = file.relativePath || file.webkitRelativePath || file.name;
+						if (!shouldIgnoreFile(path)) {
+							currentFiles.set(path, file);
+						}
 					}
+
+					// Update progress
+					fileProgressBar.style.width = `${Math.min(((i + CHUNK_SIZE) / newFiles.length) * 100, 100)}%`;
+
+					// Yield to UI thread
+					await new Promise(resolve => setTimeout(resolve, 0));
 				}
 
 				await updateFileListAndContent();
 			} catch (error) {
-				console.error('Error handling files:', error);
-				alert('Error processing files. Please try again.');
+				console.error('Error processing files:', error);
+				showToast('Error processing files. Please try again.');
+			} finally {
+				setProcessing(false);
+				fileProgressContainer.style.display = 'none';
+				fileProgressBar.style.width = '0%';
+				currentProcessing = null;
 			}
 		}
 
-		// Event Listeners for drag and drop on file list
+		async function resetAll() {
+			setProcessing(true);
+			try {
+				currentFiles.clear();
+				activeFilters.clear();
+				fileFilter.value = '';
+				filterTags.forEach(tag => tag.classList.remove('active'));
+				await updateFileListAndContent();
+				showToast('All files have been reset');
+				updateRemoveFilteredButtonState();
+			} finally {
+				setProcessing(false);
+			}
+		}
+
+		// Event Listener for Drag & Drop
 		document.addEventListener('dragenter', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			fullPageDropZone.style.display = 'flex';
+			if (!isProcessing) {
+				fullPageDropZone.style.display = 'flex';
+			}
 		});
 
 		fullPageDropZone.addEventListener('dragleave', (e) => {
@@ -950,16 +1061,24 @@
 			e.stopPropagation();
 			fullPageDropZone.style.display = 'none';
 
+			if (isProcessing) return;
+
 			let newFiles = [];
 			try {
-				if (e.dataTransfer.items && e.dataTransfer.items[0]) {
+				setProcessing(true);
+
+				if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
 					const item = e.dataTransfer.items[0];
-					console.log(item);
 					// Check if it's a directory and we have the required API
 					if (item.webkitGetAsEntry) {
 						const entry = item.webkitGetAsEntry();
 						if (entry?.isDirectory) {
-							newFiles = await getAllFileEntries(e.dataTransfer.items);
+							// Get all files from the directory, excluding specified directories and binary files
+							const entries = Array.from(e.dataTransfer.items)
+								.map(item => item.webkitGetAsEntry())
+								.filter(entry => entry !== null && (!entry.isDirectory || !shouldIgnoreDirectory(entry.fullPath)));
+
+							newFiles = await getAllFileEntries(entries);
 						} else {
 							newFiles = Array.from(e.dataTransfer.files);
 						}
@@ -971,42 +1090,107 @@
 				}
 
 				if (newFiles.length > 0) {
-					progressContainer.style.display = 'block';
 					await handleFiles(newFiles);
-					updateProgress(1, 1);
 				}
 			} catch (error) {
 				console.error('Error processing dropped files:', error);
-				alert('Error processing files. Please try again.');
+				showToast('Error processing files');
+			} finally {
+				setProcessing(false);
 			}
 		});
 
-		// Event listener for folder selection button
+		// Recursive function to read directories
+		async function getAllFileEntries(entries) {
+			const files = [];
+			const queue = [...entries];
+			let totalEntries = entries.length;
+			let processedEntries = 0;
+
+			while (queue.length > 0) {
+				const entry = queue.shift();
+
+				if (entry.isFile) {
+					try {
+						const path = entry.fullPath;
+						if (shouldIgnoreFile(path)) {
+							// Skip ignored files
+							processedEntries++;
+							fileProgressBar.style.width = `${(processedEntries / totalEntries) * 100}%`;
+							continue;
+						}
+
+						const file = await new Promise((resolve, reject) => {
+							entry.file(resolve, reject);
+						});
+						file.relativePath = entry.fullPath.slice(1); // Remove leading slash
+						files.push(file);
+					} catch (error) {
+						console.error('Error reading file:', error);
+					}
+					processedEntries++;
+					fileProgressBar.style.width = `${(processedEntries / totalEntries) * 100}%`;
+				} else if (entry.isDirectory) {
+					const path = entry.fullPath;
+					if (shouldIgnoreFile(path)) {
+						// Skip entire directory
+						const dirReader = entry.createReader();
+						const skippedEntries = await new Promise((resolve, reject) => {
+							dirReader.readEntries(resolve, reject);
+						});
+						processedEntries += skippedEntries.length;
+						fileProgressBar.style.width = `${(processedEntries / (totalEntries + skippedEntries.length)) * 100}%`;
+						totalEntries += skippedEntries.length;
+						continue;
+					}
+
+					try {
+						const dirReader = entry.createReader();
+						const newEntries = await new Promise((resolve, reject) => {
+							dirReader.readEntries(resolve, reject);
+						});
+						queue.push(...newEntries);
+						totalEntries += newEntries.length;
+					} catch (error) {
+						console.error('Error reading directory:', error);
+					}
+				}
+			}
+
+			return files;
+		}
+
+		// Event Listener for Folder Selection
 		uploadBtn.addEventListener('click', () => {
+			if (isProcessing) return;
+
 			const input = document.createElement('input');
 			input.type = 'file';
-			input.multiple = true;
 			input.webkitdirectory = true;
-			input.directory = true;
+			input.multiple = true;
 
 			input.addEventListener('change', async (e) => {
-				progressContainer.style.display = 'block';
 				const files = Array.from(e.target.files);
-				await handleFiles(files);
-				updateProgress(files.length, files.length);
+				if (files.length > 0) {
+					await handleFiles(files);
+				}
 			});
 
 			input.click();
 		});
 
-		// Filter event listeners
-		fileFilter.addEventListener('input', () => {
-			updateFileList();
-			updateTextarea();
+		// Filter Event Listener
+		fileFilter.addEventListener('input', async () => {
+			await updateRemoveFilteredButtonState();
+			if (!isProcessing) {
+				await updateFileListAndContent();
+			}
 		});
 
 		filterTags.forEach(tag => {
-			tag.addEventListener('click', () => {
+			tag.addEventListener('click', async () => {
+				if (isProcessing) return;
+
 				const pattern = tag.dataset.pattern;
 				if (activeFilters.has(pattern)) {
 					activeFilters.delete(pattern);
@@ -1015,34 +1199,49 @@
 					activeFilters.add(pattern);
 					tag.classList.add('active');
 				}
-				updateFileList();
-				updateTextarea();
+				await updateFileListAndContent();
+				updateRemoveFilteredButtonState();
 			});
 		});
 
-		// Button event listeners
-		copyBtn.addEventListener('click', () => {
-			textarea.select();
-			document.execCommand('copy');
+		// Remove Filtered Files Button
+		removeFilteredBtn.addEventListener('click', async () => {
+			if (isProcessing || !hasActiveFilters()) return;
 
-			toast.style.display = 'block';
-			setTimeout(() => {
-				toast.style.display = 'none';
-			}, 2000);
+			try {
+				const filteredFiles = filterFiles();
+				for (const file of filteredFiles) {
+					const path = file.relativePath || file.webkitRelativePath || file.name;
+					currentFiles.delete(path);
+				}
+				await updateFileListAndContent();
+				showToast('Filtered files have been removed');
+				updateRemoveFilteredButtonState();
+			} catch (error) {
+				console.error('Error removing filtered files:', error);
+				showToast('Error removing filtered files. Please try again.');
+			}
+		});
+
+		// Button Event Listeners
+		copyBtn.addEventListener('click', async () => {
+			if (!isProcessing) {
+				await copyToClipboard();
+			}
 		});
 
 		resetBtn.addEventListener('click', async () => {
-			currentFiles.clear();
-			await updateFileListAndContent();
-			activeFilters.clear();
-			fileFilter.value = '';
-			filterTags.forEach(tag => tag.classList.remove('active'));
+			if (!isProcessing) {
+				await resetAll();
+			}
 		});
 
-		removeFilteredBtn.addEventListener('click', removeFilteredFiles);
-
-		// Make removeFile available globally
-		window.removeFile = removeFile;
+		// Global function for removeFile
+		window.removeFile = async (path) => {
+			if (!isProcessing) {
+				await removeFile(path);
+			}
+		};
 	});
 </script>
 </body>
