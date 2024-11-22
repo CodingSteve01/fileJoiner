@@ -757,7 +757,12 @@
 		}
 
 		function shouldIgnoreFile(path) {
-			return Array.from(excludeDirectories).some(dir => path.includes(dir)) || isBinaryFile(path);
+			return Array.from(excludeDirectories).some(dir => path.includes(dir)) || isSecretFile(path) || isBinaryFile(path);
+		}
+
+		function isSecretFile(filename) {
+			return filename.includes('.keystore') || filename.includes('.pem') || filename.includes('.cer') || filename.includes('.key') || filename.includes('.p12') ||
+				filename === 'credentials' || filename === 'passwords' || filename === 'secrets' || filename === 'private' || filename === 'protected' || filename === 'secret.props';
 		}
 
 		function isBinaryFile(filename) {
